@@ -35,3 +35,8 @@ Thumbs.db
 !.vscode/extensions.json
 !.vscode/settings.json
 *.swp
+
+# Cachés de herramientas de Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
