@@ -1,7 +1,7 @@
 # --- Build stage: install dependencies and the project into /app/.venv ---
 FROM python:3.12-slim AS builder
 
-COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
