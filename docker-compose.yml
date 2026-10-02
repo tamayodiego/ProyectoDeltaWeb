@@ -1,0 +1,20 @@
+services:                       # lista de contenedores que queremos
+  db:                           # nombre del servicio (lo eliges tú)
+    image: postgres:17          # imagen oficial de PostgreSQL, versión 17
+    container_name: deltaweb-db
+    environment:                # configuración que la imagen lee al arrancar
+      POSTGRES_USER: delta
+      POSTGRES_PASSWORD: delta_local_pw   # solo para tu Mac; en el servidor será otra
+      POSTGRES_DB: delta_dev    # base de datos que se crea automáticamente
+    ports:
+      - "5432:5432"             # "puerto de tu Mac : puerto del contenedor"
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # dónde guarda Postgres sus datos
+    healthcheck:                # cómo sabe Docker que la base ya está lista
+      test: ["CMD-SHELL", "pg_isready -U delta -d delta_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:                       # volumen con nombre: los datos sobreviven al apagar
