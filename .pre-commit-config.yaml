@@ -1,0 +1,41 @@
+# Revisiones automáticas antes de cada commit.
+# Instalar una vez:  uv tool install pre-commit && pre-commit install
+# Correr a mano:     pre-commit run --all-files
+#
+# Ruff y ESLint corren con las versiones del proyecto (uv.lock y pnpm-lock.yaml),
+# así que el hook revisa exactamente igual que `make lint` y que el CI.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0  # `pre-commit autoupdate` la sube a la más reciente
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: no-commit-to-branch  # evita commits directos a main y develop
+        args: [--branch, main, --branch, develop]
+
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format (backend)
+        entry: uv run --project backend ruff format
+        language: system
+        types: [python]
+        files: ^backend/
+      - id: ruff-check
+        name: ruff check (backend)
+        entry: uv run --project backend ruff check --fix
+        language: system
+        types: [python]
+        files: ^backend/
+      - id: eslint
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend && pnpm exec eslint --fix "${@#frontend/}"' --
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
