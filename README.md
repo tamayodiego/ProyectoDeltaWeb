@@ -60,4 +60,4 @@ Los commits siguen [Conventional Commits](https://www.conventionalcommits.org/) 
 
 ## Licencia
 
-[GPL-3.0](LICENSE), igual que ProyectoDelta.
+[GPL-3.0-or-later](LICENSE), igual que ProyectoDelta.
