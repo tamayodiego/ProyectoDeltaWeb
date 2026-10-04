@@ -19,8 +19,6 @@ import pytest
 
 from deltaweb.domain.deltamatroid import DeltaMatroid
 
-pytestmark = pytest.mark.skip(reason="fingerprint() and frequencies() not implemented yet")
-
 
 def family(masks: list[int]) -> np.ndarray:
     return np.array(masks, dtype=np.uint64)

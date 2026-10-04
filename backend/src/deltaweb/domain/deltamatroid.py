@@ -106,3 +106,15 @@ class DeltaMatroid:
         if len(labels) != len(self.ground_set):
             raise ValueError(f"Expected {len(self.ground_set)} labels, got {len(labels)}")
         self.ground_set = labels
+
+    def fingerprint(self) -> tuple[int, ...]:
+        """Number of feasible sets of each size: entry k counts those with k elements (0..n)."""
+        n = len(self.ground_set)
+        sizes = np.bitwise_count(self.feasible_family).astype(np.intp)
+        return tuple(int(count) for count in np.bincount(sizes, minlength=n + 1))
+
+    def frequencies(self) -> list[int]:
+        """Entry i counts the feasible sets that contain element i + 1."""
+        n = len(self.ground_set)
+        bits = (self.feasible_family[:, None] >> np.arange(n, dtype=Feasible)) & Feasible(1)
+        return [int(count) for count in bits.sum(axis=0)]
