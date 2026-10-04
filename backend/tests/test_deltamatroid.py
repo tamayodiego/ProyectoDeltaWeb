@@ -127,6 +127,31 @@ def test_size_smaller_than_family_raises() -> None:
         DeltaMatroid("D", feasible_family=family([0b000, 0b101]), size=2)
 
 
+@pytest.mark.parametrize(
+    "data",
+    [
+        np.array([0b000, 0b011, 0b101]),  # numpy's default int64, as from JSON or the database
+        [0b000, 0b011, 0b101],  # plain Python list
+    ],
+)
+def test_family_is_converted_to_uint64(data: object) -> None:
+    dm = DeltaMatroid("D", feasible_family=data)  # type: ignore[arg-type]
+
+    assert dm.feasible_family.dtype == np.uint64
+    np.testing.assert_array_equal(dm.feasible_family, family([0b000, 0b011, 0b101]))
+    assert dm.frequencies == [2, 1, 1]
+
+
+def test_negative_feasible_set_raises() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        DeltaMatroid("D", feasible_family=np.array([0, -1]))
+
+
+def test_non_integer_feasible_set_raises() -> None:
+    with pytest.raises(ValueError, match="integer bitmasks"):
+        DeltaMatroid("D", feasible_family=np.array([0.0, 1.5]))
+
+
 def test_matrix_takes_precedence_over_family() -> None:
     dm = DeltaMatroid("D", field=3, matrix=matrix([[0, 1], [-1, 0]]), feasible_family=family([0b1]))
 
