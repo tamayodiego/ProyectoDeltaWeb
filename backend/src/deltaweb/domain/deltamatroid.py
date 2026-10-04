@@ -3,6 +3,7 @@ from typing import Literal
 import flint
 import numpy as np
 from numpy import uint64 as Feasible
+from numpy.typing import ArrayLike
 from numpy.typing import NDArray as Family
 from numpy.typing import NDArray as Matrix
 
@@ -37,6 +38,8 @@ class DeltaMatroid:
     matrix: Matrix[np.int64] | None
     ground_set: list[str]
     feasible_family: Family[Feasible]
+    fingerprint: tuple[int, ...]  # feasible sets of each size, 0..n
+    frequencies: list[int]  # feasible sets containing each element
 
     # --- Constructor: name is required; build from a matrix or from a feasible family ---
     def __init__(
@@ -44,7 +47,7 @@ class DeltaMatroid:
         name: str,
         field: Literal[2, 3] = 2,
         matrix: Matrix[np.int64] | None = None,
-        feasible_family: Family[Feasible] | None = None,
+        feasible_family: ArrayLike | None = None,
         size: int | None = None,
     ) -> None:
         self.name = name
@@ -60,7 +63,7 @@ class DeltaMatroid:
                 raise InvalidMatrixError(f"GF({field}) requires a {expected} matrix, got {kind}")
             self.feasible_family = self.calculate_dm_from_matrix(matrix, field)
         elif feasible_family is not None:
-            self.feasible_family = feasible_family
+            self.feasible_family = self.to_family(feasible_family)
         else:
             raise ValueError("Provide a matrix or a feasible family")
 
@@ -78,6 +81,10 @@ class DeltaMatroid:
         if union.bit_length() > n:
             raise ValueError(f"Feasible sets use element {union.bit_length()}, but size is {n}")
         self.ground_set = [str(i + 1) for i in range(n)]
+
+        # The family never changes after construction, so these are computed once
+        self.fingerprint = self.compute_fingerprint(self.feasible_family, n)
+        self.frequencies = self.compute_frequencies(self.feasible_family, n)
 
     @staticmethod
     def calculate_dm_from_matrix(
@@ -107,14 +114,30 @@ class DeltaMatroid:
             raise ValueError(f"Expected {len(self.ground_set)} labels, got {len(labels)}")
         self.ground_set = labels
 
-    def fingerprint(self) -> tuple[int, ...]:
+    @staticmethod
+    def to_family(data: ArrayLike) -> Family[Feasible]:
+        """Convert any 1-D sequence of non-negative integer bitmasks to a uint64 family.
+
+        Families from JSON or the database arrive as int64 or plain lists; numpy cannot mix
+        int64 with uint64 in bit shifts, and a plain cast would turn -1 into 2**64 - 1.
+        """
+        family = np.asarray(data)
+        if family.ndim != 1:
+            raise ValueError(f"Feasible family must be 1-D, got shape {family.shape}")
+        if family.size and not np.issubdtype(family.dtype, np.integer):
+            raise ValueError(f"Feasible sets must be integer bitmasks, got {family.dtype}")
+        if family.size and (family < 0).any():
+            raise ValueError("Feasible sets must be non-negative bitmasks")
+        return family.astype(Feasible)
+
+    @staticmethod
+    def compute_fingerprint(family: Family[Feasible], n: int) -> tuple[int, ...]:
         """Number of feasible sets of each size: entry k counts those with k elements (0..n)."""
-        n = len(self.ground_set)
-        sizes = np.bitwise_count(self.feasible_family).astype(np.intp)
+        sizes = np.bitwise_count(family).astype(np.intp)
         return tuple(int(count) for count in np.bincount(sizes, minlength=n + 1))
 
-    def frequencies(self) -> list[int]:
+    @staticmethod
+    def compute_frequencies(family: Family[Feasible], n: int) -> list[int]:
         """Entry i counts the feasible sets that contain element i + 1."""
-        n = len(self.ground_set)
-        bits = (self.feasible_family[:, None] >> np.arange(n, dtype=Feasible)) & Feasible(1)
+        bits = (family[:, None] >> np.arange(n, dtype=Feasible)) & Feasible(1)
         return [int(count) for count in bits.sum(axis=0)]
