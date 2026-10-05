@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from deltaweb.domain.deltamatroid import DeltaMatroid
+from deltaweb.domain.deltamatroid import DeltaMatroid, InvalidMatrixError
 
 
 def matrix(rows: list[list[int]]) -> np.ndarray:
@@ -17,7 +17,7 @@ def family(masks: list[int]) -> np.ndarray:
 
 def test_from_skew_symmetric_2x2() -> None:
     # {} -> det 1, {1} and {2} -> det 0, {1,2} -> det 1
-    dm = DeltaMatroid("D", field=2, matrix=matrix([[0, 1], [-1, 0]]))
+    dm = DeltaMatroid("D", field=3, matrix=matrix([[0, 1], [-1, 0]]))
 
     np.testing.assert_array_equal(dm.feasible_family, family([0b00, 0b11]))
     assert dm.ground_set == ["1", "2"]
@@ -26,7 +26,7 @@ def test_from_skew_symmetric_2x2() -> None:
 def test_from_skew_symmetric_3x3() -> None:
     # Every pair has det 1; singletons and the whole set (odd skew-symmetric) have det 0
     m = matrix([[0, 1, 1], [-1, 0, 1], [-1, -1, 0]])
-    dm = DeltaMatroid("D", field=2, matrix=m)
+    dm = DeltaMatroid("D", field=3, matrix=m)
 
     np.testing.assert_array_equal(dm.feasible_family, family([0b000, 0b011, 0b101, 0b110]))
     assert dm.ground_set == ["1", "2", "3"]
@@ -36,24 +36,53 @@ def test_zero_row_stays_in_ground_set() -> None:
     # Row/column 3 is all zeros: element 3 is in no feasible set,
     # but the ground set has one element per row of the matrix
     m = matrix([[0, 1, 0], [-1, 0, 0], [0, 0, 0]])
-    dm = DeltaMatroid("D", field=2, matrix=m)
+    dm = DeltaMatroid("D", field=3, matrix=m)
 
     np.testing.assert_array_equal(dm.feasible_family, family([0b000, 0b011]))
     assert dm.ground_set == ["1", "2", "3"]
 
 
 def test_binary_field_drops_even_determinants() -> None:
-    # det of the whole matrix is -2: 0 mod 2
-    dm = DeltaMatroid("D", field=2, matrix=matrix([[1, 1], [1, -1]]))
+    # Singletons have det 0, pairs det -1, the whole matrix det 2: 2 mod 2 = 0
+    m = matrix([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+    dm = DeltaMatroid("D", field=2, matrix=m)
 
-    np.testing.assert_array_equal(dm.feasible_family, family([0b00, 0b01, 0b10]))
+    np.testing.assert_array_equal(dm.feasible_family, family([0b000, 0b011, 0b101, 0b110]))
 
 
-def test_ternary_field_keeps_determinant_minus_two() -> None:
-    # det of the whole matrix is -2: -2 mod 3 = 1
-    dm = DeltaMatroid("D", field=3, matrix=matrix([[1, 1], [1, -1]]))
+def test_ternary_field_drops_determinant_nine() -> None:
+    # Skew-symmetric with Pfaffian 3: the whole matrix has det 9, and 9 mod 3 = 0.
+    # Every pair has det 1 (feasible); singletons and triples have det 0 (odd size).
+    m = matrix([[0, 1, -1, 1], [-1, 0, 1, 1], [1, -1, 0, 1], [-1, -1, -1, 0]])
+    dm = DeltaMatroid("D", field=3, matrix=m)
 
-    np.testing.assert_array_equal(dm.feasible_family, family([0b00, 0b01, 0b10, 0b11]))
+    pairs = [0b0011, 0b0101, 0b0110, 0b1001, 0b1010, 0b1100]
+    np.testing.assert_array_equal(dm.feasible_family, family([0b0000, *pairs]))
+
+
+# --- Field and matrix kind must match ---
+
+
+def test_binary_field_rejects_skew_symmetric_matrix() -> None:
+    with pytest.raises(InvalidMatrixError, match="GF\\(2\\) requires a symmetric matrix"):
+        DeltaMatroid("D", field=2, matrix=matrix([[0, 1], [-1, 0]]))
+
+
+def test_ternary_field_rejects_symmetric_matrix() -> None:
+    with pytest.raises(InvalidMatrixError, match="GF\\(3\\) requires a skew-symmetric matrix"):
+        DeltaMatroid("D", field=3, matrix=matrix([[1, 0], [0, 1]]))
+
+
+@pytest.mark.parametrize("field", [2, 3])
+def test_zero_matrix_is_accepted_in_both_fields(field: int) -> None:
+    dm = DeltaMatroid("D", field=field, matrix=matrix([[0, 0], [0, 0]]))  # type: ignore[arg-type]
+
+    np.testing.assert_array_equal(dm.feasible_family, family([0b00]))
+
+
+def test_invalid_matrix_is_rejected_before_computing() -> None:
+    with pytest.raises(InvalidMatrixError):
+        DeltaMatroid("D", field=2, matrix=matrix([[0, 1], [0, 0]]))
 
 
 def test_matrix_and_attributes_are_stored() -> None:
@@ -98,8 +127,33 @@ def test_size_smaller_than_family_raises() -> None:
         DeltaMatroid("D", feasible_family=family([0b000, 0b101]), size=2)
 
 
+@pytest.mark.parametrize(
+    "data",
+    [
+        np.array([0b000, 0b011, 0b101]),  # numpy's default int64, as from JSON or the database
+        [0b000, 0b011, 0b101],  # plain Python list
+    ],
+)
+def test_family_is_converted_to_uint64(data: object) -> None:
+    dm = DeltaMatroid("D", feasible_family=data)  # type: ignore[arg-type]
+
+    assert dm.feasible_family.dtype == np.uint64
+    np.testing.assert_array_equal(dm.feasible_family, family([0b000, 0b011, 0b101]))
+    assert dm.frequencies == [2, 1, 1]
+
+
+def test_negative_feasible_set_raises() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        DeltaMatroid("D", feasible_family=np.array([0, -1]))
+
+
+def test_non_integer_feasible_set_raises() -> None:
+    with pytest.raises(ValueError, match="integer bitmasks"):
+        DeltaMatroid("D", feasible_family=np.array([0.0, 1.5]))
+
+
 def test_matrix_takes_precedence_over_family() -> None:
-    dm = DeltaMatroid("D", matrix=matrix([[0, 1], [-1, 0]]), feasible_family=family([0b1]))
+    dm = DeltaMatroid("D", field=3, matrix=matrix([[0, 1], [-1, 0]]), feasible_family=family([0b1]))
 
     np.testing.assert_array_equal(dm.feasible_family, family([0b00, 0b11]))
 
@@ -119,15 +173,94 @@ def test_submatrix() -> None:
     assert DeltaMatroid.submatrix(m, []).shape == (0, 0)
 
 
-def test_relabel() -> None:
+def test_default_labels_are_1_to_n() -> None:
     dm = DeltaMatroid("D", feasible_family=family([0b000, 0b011, 0b101]))
-    dm.relabel(["a", "b", "c"])
+
+    assert dm.ground_set == ["1", "2", "3"]
+
+
+# --- Relabel ---
+
+
+def small() -> DeltaMatroid:
+    # {}, {1,2}, {1,3}
+    return DeltaMatroid("D", feasible_family=family([0b000, 0b011, 0b101]))
+
+
+def test_relabel_all_labels() -> None:
+    dm = small().relabel({"1": "a", "2": "b", "3": "c"})
 
     assert dm.ground_set == ["a", "b", "c"]
 
 
-def test_relabel_with_wrong_length_raises() -> None:
-    dm = DeltaMatroid("D", feasible_family=family([0b000, 0b011, 0b101]))
+def test_relabel_partial_mapping_keeps_other_labels() -> None:
+    dm = small().relabel({"3": "x"})
 
-    with pytest.raises(ValueError, match="Expected 3 labels, got 2"):
-        dm.relabel(["a", "b"])
+    assert dm.ground_set == ["1", "2", "x"]
+
+
+def test_relabel_swap_applies_at_once() -> None:
+    dm = small().relabel({"1": "2", "2": "1"})
+
+    assert dm.ground_set == ["2", "1", "3"]
+
+
+def test_relabel_returns_new_object_and_keeps_the_original() -> None:
+    original = small()
+    relabeled = original.relabel({"1": "a"})
+
+    assert relabeled is not original
+    assert original.ground_set == ["1", "2", "3"]
+
+
+def test_relabel_keeps_family_fingerprint_and_frequencies() -> None:
+    original = small()
+    relabeled = original.relabel({"1": "a", "2": "b", "3": "c"})
+
+    np.testing.assert_array_equal(relabeled.feasible_family, original.feasible_family)
+    assert relabeled.fingerprint == original.fingerprint
+    assert relabeled.frequencies == original.frequencies
+    assert relabeled.name == original.name
+    assert relabeled.field == original.field
+
+
+def test_relabel_unknown_label_raises() -> None:
+    with pytest.raises(ValueError, match="Unknown labels"):
+        small().relabel({"9": "a"})
+
+
+def test_relabel_duplicate_labels_raise() -> None:
+    with pytest.raises(ValueError, match="Duplicate labels"):
+        small().relabel({"1": "2"})
+
+
+def test_relabel_empty_label_raises() -> None:
+    with pytest.raises(ValueError, match="non-empty strings"):
+        small().relabel({"1": ""})
+
+
+# --- Labels <-> bitmasks ---
+
+
+def test_encode_and_decode() -> None:
+    dm = small().relabel({"1": "a", "2": "b", "3": "c"})
+
+    assert dm.encode(["a", "c"]) == 0b101
+    assert dm.decode(0b101) == ["a", "c"]
+    assert dm.decode(0) == []
+
+
+def test_decode_feasible_sets_with_custom_labels() -> None:
+    dm = small().relabel({"1": "a", "2": "b", "3": "c"})
+
+    assert [dm.decode(int(mask)) for mask in dm.feasible_family] == [[], ["a", "b"], ["a", "c"]]
+
+
+def test_encode_unknown_label_raises() -> None:
+    with pytest.raises(ValueError, match="Unknown label"):
+        small().encode(["z"])
+
+
+def test_decode_mask_too_large_raises() -> None:
+    with pytest.raises(ValueError, match="does not fit"):
+        small().decode(0b1000)
