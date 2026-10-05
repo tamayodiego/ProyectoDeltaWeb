@@ -1,3 +1,5 @@
+import copy
+from collections.abc import Iterable
 from typing import Literal
 
 import flint
@@ -108,11 +110,45 @@ class DeltaMatroid:
         """Principal submatrix of ``matrix``: rows and columns given by ``indices``."""
         return matrix[np.ix_(indices, indices)]
 
-    def relabel(self, labels: list[str]) -> None:
-        """Replace the ground set labels, keeping their order."""
-        if len(labels) != len(self.ground_set):
-            raise ValueError(f"Expected {len(self.ground_set)} labels, got {len(labels)}")
-        self.ground_set = labels
+    def relabel(self, mapping: dict[str, str]) -> "DeltaMatroid":
+        """Return a new delta-matroid whose labels are renamed by ``mapping`` {old: new}.
+
+        Labels missing from ``mapping`` are kept. All renames apply at once, so swaps like
+        {"a": "b", "b": "a"} work. Only the labels change: bit k still names ground_set[k],
+        so the feasible family, fingerprint and frequencies stay valid.
+        """
+        unknown = [old for old in mapping if old not in self.ground_set]
+        if unknown:
+            raise ValueError(f"Unknown labels: {unknown}")
+        if any(not isinstance(new, str) or not new for new in mapping.values()):
+            raise ValueError("New labels must be non-empty strings")
+        labels = [mapping.get(label, label) for label in self.ground_set]
+        duplicates = sorted({label for label in labels if labels.count(label) > 1})
+        if duplicates:
+            raise ValueError(f"Duplicate labels after relabel: {duplicates}")
+
+        relabeled = copy.copy(self)
+        relabeled.ground_set = labels
+        relabeled.frequencies = list(self.frequencies)
+        return relabeled
+
+    def encode(self, labels: Iterable[str]) -> int:
+        """Bitmask of the subset with the given labels, e.g. ["a", "c"] -> 0b101."""
+        index = {label: k for k, label in enumerate(self.ground_set)}
+        mask = 0
+        for label in labels:
+            if label not in index:
+                raise ValueError(f"Unknown label: {label!r}")
+            mask |= 1 << index[label]
+        return mask
+
+    def decode(self, mask: int) -> list[str]:
+        """Labels of the subset encoded by ``mask``, in ground set order."""
+        mask = int(mask)
+        n = len(self.ground_set)
+        if mask < 0 or mask >> n:
+            raise ValueError(f"Bitmask {mask} does not fit a ground set of size {n}")
+        return [label for k, label in enumerate(self.ground_set) if (mask >> k) & 1]
 
     @staticmethod
     def to_family(data: ArrayLike) -> Family[Feasible]:
