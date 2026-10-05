@@ -50,7 +50,12 @@ el despliegue a producción.
 
 - `DeltaMatroid` es una clase con sus operaciones como métodos (como en la app Java y
   la librería C++). Las operaciones deben **regresar una delta-matroide nueva** en vez
-  de modificar la actual (pendiente: `relabel` todavía muta).
+  de modificar la actual (`relabel` ya lo hace).
+- Regla de campo: GF(2) solo acepta matrices simétricas 0/1 y GF(3) solo antisimétricas
+  -1/0/1 (la matriz cero vale en ambos). Por eso los casos SIM/GF3 y ANTI/GF2 del golden
+  se saltan a propósito.
+- `fingerprint` y `frequencies` son atributos calculados en el constructor (la familia no
+  cambia). Las etiquetas del conjunto base son solo nombres: `relabel` no toca la familia.
 - Factibles como **bitmasks** (`numpy.uint64`): bit k = elemento k + 1.
 - Conjunto base = `{1, ..., n}`, con `n` explícito (`len(matrix)` o `size`), para que las
   etiquetas nunca se desalineen de los bits. Convención informática acordada con el
