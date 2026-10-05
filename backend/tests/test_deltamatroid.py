@@ -173,15 +173,94 @@ def test_submatrix() -> None:
     assert DeltaMatroid.submatrix(m, []).shape == (0, 0)
 
 
-def test_relabel() -> None:
+def test_default_labels_are_1_to_n() -> None:
     dm = DeltaMatroid("D", feasible_family=family([0b000, 0b011, 0b101]))
-    dm.relabel(["a", "b", "c"])
+
+    assert dm.ground_set == ["1", "2", "3"]
+
+
+# --- Relabel ---
+
+
+def small() -> DeltaMatroid:
+    # {}, {1,2}, {1,3}
+    return DeltaMatroid("D", feasible_family=family([0b000, 0b011, 0b101]))
+
+
+def test_relabel_all_labels() -> None:
+    dm = small().relabel({"1": "a", "2": "b", "3": "c"})
 
     assert dm.ground_set == ["a", "b", "c"]
 
 
-def test_relabel_with_wrong_length_raises() -> None:
-    dm = DeltaMatroid("D", feasible_family=family([0b000, 0b011, 0b101]))
+def test_relabel_partial_mapping_keeps_other_labels() -> None:
+    dm = small().relabel({"3": "x"})
 
-    with pytest.raises(ValueError, match="Expected 3 labels, got 2"):
-        dm.relabel(["a", "b"])
+    assert dm.ground_set == ["1", "2", "x"]
+
+
+def test_relabel_swap_applies_at_once() -> None:
+    dm = small().relabel({"1": "2", "2": "1"})
+
+    assert dm.ground_set == ["2", "1", "3"]
+
+
+def test_relabel_returns_new_object_and_keeps_the_original() -> None:
+    original = small()
+    relabeled = original.relabel({"1": "a"})
+
+    assert relabeled is not original
+    assert original.ground_set == ["1", "2", "3"]
+
+
+def test_relabel_keeps_family_fingerprint_and_frequencies() -> None:
+    original = small()
+    relabeled = original.relabel({"1": "a", "2": "b", "3": "c"})
+
+    np.testing.assert_array_equal(relabeled.feasible_family, original.feasible_family)
+    assert relabeled.fingerprint == original.fingerprint
+    assert relabeled.frequencies == original.frequencies
+    assert relabeled.name == original.name
+    assert relabeled.field == original.field
+
+
+def test_relabel_unknown_label_raises() -> None:
+    with pytest.raises(ValueError, match="Unknown labels"):
+        small().relabel({"9": "a"})
+
+
+def test_relabel_duplicate_labels_raise() -> None:
+    with pytest.raises(ValueError, match="Duplicate labels"):
+        small().relabel({"1": "2"})
+
+
+def test_relabel_empty_label_raises() -> None:
+    with pytest.raises(ValueError, match="non-empty strings"):
+        small().relabel({"1": ""})
+
+
+# --- Labels <-> bitmasks ---
+
+
+def test_encode_and_decode() -> None:
+    dm = small().relabel({"1": "a", "2": "b", "3": "c"})
+
+    assert dm.encode(["a", "c"]) == 0b101
+    assert dm.decode(0b101) == ["a", "c"]
+    assert dm.decode(0) == []
+
+
+def test_decode_feasible_sets_with_custom_labels() -> None:
+    dm = small().relabel({"1": "a", "2": "b", "3": "c"})
+
+    assert [dm.decode(int(mask)) for mask in dm.feasible_family] == [[], ["a", "b"], ["a", "c"]]
+
+
+def test_encode_unknown_label_raises() -> None:
+    with pytest.raises(ValueError, match="Unknown label"):
+        small().encode(["z"])
+
+
+def test_decode_mask_too_large_raises() -> None:
+    with pytest.raises(ValueError, match="does not fit"):
+        small().decode(0b1000)
