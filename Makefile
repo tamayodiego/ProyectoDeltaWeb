@@ -1,7 +1,7 @@
 # Atajos del proyecto. `make` o `make help` muestra la lista.
 
 .DEFAULT_GOAL := help
-.PHONY: help install hooks db db-down db-logs db-shell backend frontend test lint format build
+.PHONY: help install hooks db db-down db-logs db-shell migrate migration backend frontend test lint format build
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -26,13 +26,19 @@ db-logs: ## Muestra los logs de PostgreSQL
 db-shell: ## Abre psql dentro del contenedor
 	docker compose exec db psql -U delta -d delta_dev
 
+migrate: ## Aplica las migraciones pendientes a la base local
+	cd backend && uv run alembic upgrade head
+
+migration: ## Crea una migración desde los modelos: make migration m="create folders"
+	cd backend && uv run alembic revision --autogenerate -m "$(m)"
+
 backend: ## Corre la API en modo desarrollo (http://127.0.0.1:8000/docs)
 	cd backend && uv run fastapi dev src/deltaweb/main.py
 
 frontend: ## Corre el frontend en modo desarrollo
 	cd frontend && pnpm dev
 
-test: ## Corre las pruebas del backend
+test: ## Corre las pruebas del backend (las de BD necesitan Docker encendido)
 	cd backend && uv run pytest
 
 lint: ## Revisa estilo y tipos (Ruff, mypy, ESLint)
