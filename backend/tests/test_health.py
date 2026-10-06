@@ -2,16 +2,16 @@ from fastapi.testclient import TestClient
 
 from deltaweb.main import app
 
-client = TestClient(app)
 
+def test_healthz_does_not_need_the_database() -> None:
+    response = TestClient(app).get("/healthz")
 
-def test_healthz() -> None:
-    response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
-def test_readyz() -> None:
+def test_readyz_checks_the_database(client: TestClient) -> None:
     response = client.get("/readyz")
+
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
