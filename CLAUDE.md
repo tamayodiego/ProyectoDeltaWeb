@@ -34,9 +34,10 @@ el despliegue a producción.
 | Todo lo disponible | `make` |
 | Dependencias | `make install` |
 | Postgres local | `make db` / `make db-down` / `make db-shell` |
+| Migraciones | `make migrate` / `make migration m="..."` (revisar antes de aplicar) |
 | API en desarrollo | `make backend` (http://127.0.0.1:8000/docs) |
 | Frontend en desarrollo | `make frontend` |
-| Pruebas | `make test` (o `cd backend && uv run pytest`) |
+| Pruebas | `make test` (o `cd backend && uv run pytest`; las de BD necesitan Docker) |
 | Estilo y tipos | `make lint` / `make format` |
 | Imágenes Docker | `make build` |
 
@@ -44,7 +45,10 @@ el despliegue a producción.
 
 `backend/src/deltaweb/`: `main.py` (`create_app`), `config.py` (variables `DELTAWEB_*`),
 `api/` (routers), `schemas/` (Pydantic: solo datos que viajan en JSON), `services/`
-(une API, dominio y BD) y `domain/` (lógica pura de delta-matroides, sin FastAPI ni BD).
+(une API, dominio y BD), `domain/` (lógica pura de delta-matroides, sin FastAPI ni BD),
+`db.py` (engine, sesión, `Base`) y `models/` (tablas: `User`, `Folder`,
+`DeltaMatroidRecord`; cada modelo nuevo se importa en `models/__init__.py`). Las
+migraciones están en `backend/migrations/versions/` con IDs `0001`, `0002`, ...
 
 ## Decisiones de diseño del dominio
 
@@ -78,4 +82,12 @@ el despliegue a producción.
 - El `docker-compose.yml` solo tiene `db`; backend y frontend se corren en la Mac durante
   el desarrollo y se agregan a Compose en la Fase 4.
 - Infraestructura limitada: VPS de 2 vCPU y 4 GB de RAM. Pensar en el consumo de memoria.
-- Generación 2^n en subconjuntos; se usa con n <= 15 (~1.2 s en Python puro).
+- Generación 2^n en subconjuntos; se usa con n <= 15 (~0.3 s en un Apple M3, ver
+  `backend/scripts/benchmark.py`). En la API corre en un pool de 2 procesos (`spawn`);
+  `future.cancel()` no detiene una tarea que ya está corriendo.
+- `backend/Dockerfile` todavía no copia `alembic.ini` ni `migrations/`: desde la imagen no
+  se pueden aplicar migraciones (pendiente para el despliegue).
+- El usuario es un demo temporal (`get_current_user` en `api/deps.py`) hasta el login
+  del bloque 2b. Los routers solo dependen de `CurrentUser`.
+- Fuera de pytest, `uv run python` puede fallar con `No module named 'deltaweb'` porque
+  macOS oculta el `.pth` de `.venv`; usar `PYTHONPATH=src`.
