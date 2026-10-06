@@ -1,12 +1,12 @@
 """Folders of the current user: create, list, rename/move and delete."""
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from deltaweb.api.deps import CurrentUser, SessionDep
-from deltaweb.models import Folder, User
+from deltaweb.models import DeltaMatroidRecord, Folder, User
 from deltaweb.schemas.folder import FolderCreate, FolderOut, FolderUpdate
 
 router = APIRouter(prefix="/folders", tags=["folders"])
@@ -84,15 +84,23 @@ def update_folder(
 def delete_folder(
     folder_id: int, session: SessionDep, user: CurrentUser, force: bool = False
 ) -> None:
-    """Delete a folder and, with ``force=true``, every subfolder (ON DELETE CASCADE)."""
+    """Delete a folder and, with ``force=true``, everything inside it at every level:
+    subfolders and delta-matroids (both through ON DELETE CASCADE)."""
     folder = get_own_folder(session, user, folder_id)
-    subfolders = len(subtree_ids(session, folder.id)) - 1
-    if subfolders and not force:
+    tree = subtree_ids(session, folder.id)
+    subfolders = len(tree) - 1
+    delta_matroids = session.scalar(
+        select(func.count())
+        .select_from(DeltaMatroidRecord)
+        .where(DeltaMatroidRecord.folder_id.in_(tree))
+    )
+    if (subfolders or delta_matroids) and not force:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail={
-                "message": "The folder has subfolders; repeat with force=true to delete them",
+                "message": "The folder is not empty; repeat with force=true to delete everything",
                 "subfolders": subfolders,
+                "delta_matroids": delta_matroids,
             },
         )
     session.delete(folder)
