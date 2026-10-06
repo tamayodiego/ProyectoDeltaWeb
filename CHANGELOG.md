@@ -7,6 +7,39 @@ usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.3.0] - 2026-10-05
+
+Fase 2a: base de datos, carpetas y delta-matroides guardadas.
+
+### Añadido
+
+- **Base de datos:** PostgreSQL con SQLAlchemy 2 y migraciones Alembic; sesión por
+  petición; `/readyz` comprueba la BD (503 si no la alcanza). Atajos `make migrate` y
+  `make migration`. Las pruebas de BD usan un Postgres desechable con Testcontainers
+  ([#17](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/17)).
+- **Carpetas:** modelo `Folder` (migración `0002`), un árbol por usuario con borrado en
+  cascada y nombres únicos en el mismo lugar (distingue mayúsculas)
+  ([#18](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/18)).
+- **API de carpetas:** `POST`, `GET`, `PATCH` y `DELETE /folders`. Mover una carpeta
+  dentro de sí misma o de un descendiente da 400; borrar una carpeta con contenido pide
+  `force=true` ([#19](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/19)).
+- **Generación por la API:** `POST /delta-matroids/generate` calcula sin guardar. El
+  trabajo 2ⁿ corre en un pool de procesos, con límite de tamaño (n ≤ 15) y tiempo máximo
+  ([#20](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/20)).
+- **Delta-matroides guardadas:** modelo `DeltaMatroidRecord` (migración `0003`) y CRUD en
+  `/delta-matroids`. Se guardan la matriz y la familia; la huella y las frecuencias se
+  recalculan al leer. La lista devuelve resúmenes sin cargar las familias
+  ([#21](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/21)).
+- Usuario demo temporal: todas las peticiones son del mismo usuario hasta el login (2b)
+  ([#17](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/17)).
+
+### Cambiado
+
+- Borrar una carpeta cuenta también las delta-matroides del subárbol: el 409 incluye
+  `delta_matroids` y `force=true` las borra
+  ([#21](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/21)).
+- `make test` necesita Docker encendido para las pruebas de BD.
+
 ## [0.2.0] - 2026-10-04
 
 Fase 1: lógica de delta-matroides en Python, validada contra la app Java.
@@ -75,6 +108,7 @@ Fase 0: estructura del proyecto, herramientas y primera versión del dominio.
 - La imagen del backend usa uv 0.12, la misma versión que en local
   ([#5](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/5)).
 
-[Sin publicar]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.2.0...HEAD
+[Sin publicar]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/releases/tag/v0.1.0
