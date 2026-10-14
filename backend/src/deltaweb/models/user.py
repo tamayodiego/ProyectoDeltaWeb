@@ -2,7 +2,7 @@
 
 The email is the login name and is stored in lowercase, so "Ana@X.com" and "ana@x.com"
 are the same account. Only a hash of the password is kept. ``password_hash`` is None for
-accounts without a password yet (like the temporary demo user), and ``email_verified_at``
+accounts without a password (login with Google or GitHub, block 2c), and ``email_verified_at``
 stays None until the user confirms their email.
 """
 

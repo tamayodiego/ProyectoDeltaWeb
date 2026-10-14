@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     generation_timeout_seconds: float = 30.0
     max_matrix_size: int = 15  # n = 15 takes ~0.3 s locally; every +1 doubles it
 
+    # Login sessions: a random token in an httpOnly cookie, its hash in user_sessions.
+    session_days: int = 30
+    # Send the cookie only over HTTPS. False on localhost (plain http); True in dev and prod.
+    cookie_secure: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:
