@@ -4,7 +4,7 @@ The session lives in an httpOnly cookie (see services/auth.py). SameSite=Lax mea
 browser does not send it on cross-site POSTs, which blocks classic CSRF against this API.
 """
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -17,10 +17,37 @@ from deltaweb.services.passwords import (
     WeakPasswordError,
     check_password_strength,
     hash_password,
+    needs_rehash,
     verify_password,
 )
+from deltaweb.services.rate_limit import RateLimited, RateLimiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+_settings = get_settings()
+# Per IP: slows down one machine guessing many accounts. Per email: slows down many
+# machines guessing one account. Checked before any password hashing (the costly part).
+login_by_ip = RateLimiter(_settings.login_attempts_per_ip, window=60)
+login_by_email = RateLimiter(_settings.login_attempts_per_email, window=60)
+register_by_ip = RateLimiter(_settings.registrations_per_ip, window=60 * 60)
+LIMITERS = (login_by_ip, login_by_email, register_by_ip)
+
+
+def check_rate(limiter: RateLimiter, key: str) -> None:
+    try:
+        limiter.hit(key)
+    except RateLimited as exc:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many attempts, try again later",
+            headers={"Retry-After": str(exc.retry_after)},
+        ) from exc
+
+
+def client_ip(request: Request) -> str:
+    # Behind a proxy this is the proxy's address unless uvicorn trusts its
+    # X-Forwarded-For header (--forwarded-allow-ips); see CLAUDE.md
+    return request.client.host if request.client else "unknown"
 
 
 def to_out(user: User) -> UserOut:
@@ -39,15 +66,18 @@ def set_session_cookie(response: Response, token: str) -> None:
         token,
         max_age=settings.session_days * 24 * 60 * 60,
         httponly=True,  # JavaScript cannot read it, so an XSS bug cannot steal it
-        secure=settings.cookie_secure,  # HTTPS only outside localhost
+        secure=settings.secure_cookies(),  # HTTPS only, except environment "local"
         samesite="lax",
         path="/",
     )
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(body: Credentials, response: Response, session: SessionDep) -> UserOut:
+def register(
+    body: Credentials, request: Request, response: Response, session: SessionDep
+) -> UserOut:
     """Create the account and log in right away (the email can be verified later)."""
+    check_rate(register_by_ip, client_ip(request))
     try:
         check_password_strength(body.password)
     except WeakPasswordError as exc:
@@ -72,11 +102,17 @@ def register(body: Credentials, response: Response, session: SessionDep) -> User
 
 
 @router.post("/login")
-def login(body: Credentials, response: Response, session: SessionDep) -> UserOut:
+def login(body: Credentials, request: Request, response: Response, session: SessionDep) -> UserOut:
     """Same answer for "no such email" and "wrong password": never reveal who has an account."""
+    check_rate(login_by_ip, client_ip(request))
+    check_rate(login_by_email, body.email)
+
     user = session.scalar(select(User).where(User.email == body.email))
     if not verify_password(body.password, user.password_hash if user else None) or user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    if user.password_hash is not None and needs_rehash(user.password_hash):
+        # Hashed with older parameters: upgrade now that we know the password
+        user.password_hash = hash_password(body.password)
 
     set_session_cookie(response, create_session(session, user))
     return to_out(user)

@@ -87,7 +87,17 @@ migraciones están en `backend/migrations/versions/` con IDs `0001`, `0002`, ...
   `future.cancel()` no detiene una tarea que ya está corriendo.
 - `backend/Dockerfile` todavía no copia `alembic.ini` ni `migrations/`: desde la imagen no
   se pueden aplicar migraciones (pendiente para el despliegue).
-- El usuario es un demo temporal (`get_current_user` en `api/deps.py`) hasta el login
-  del bloque 2b. Los routers solo dependen de `CurrentUser`.
+- Autenticación (bloque 2b): `get_current_user` (`api/deps.py`) lee la cookie de sesión
+  y responde 401 sin ella; los routers solo dependen de `CurrentUser`. En los tests,
+  `client` ya tiene sesión iniciada y `anonymous_client` no.
+- Argon2id con el perfil de OWASP (19 MiB, t=2, p=1) y como mucho
+  `password_hash_concurrency` hashes a la vez, para acotar la memoria en el VPS.
+- El rate limiting de `/auth` vive en memoria del proceso: vale para una sola réplica.
+  Detrás de un proxy (nginx, ingress) la IP del cliente solo es la real si uvicorn
+  confía en `X-Forwarded-For` (`--forwarded-allow-ips`); si no, todos comparten la IP del
+  proxy y el límite por IP pasa a ser global (pendiente para el despliegue).
+- `cookie_secure` es automático: la cookie solo va sin `Secure` con `environment=local`.
+- Pendientes de auth: borrar sesiones caducadas; decidir si el 409 del registro (que
+  revela si un email tiene cuenta) se mantiene.
 - Fuera de pytest, `uv run python` puede fallar con `No module named 'deltaweb'` porque
   macOS oculta el `.pth` de `.venv`; usar `PYTHONPATH=src`.

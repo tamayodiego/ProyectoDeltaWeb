@@ -22,8 +22,22 @@ class Settings(BaseSettings):
 
     # Login sessions: a random token in an httpOnly cookie, its hash in user_sessions.
     session_days: int = 30
-    # Send the cookie only over HTTPS. False on localhost (plain http); True in dev and prod.
-    cookie_secure: bool = False
+    # Send the cookie only over HTTPS. None = automatic: off only when environment is
+    # "local" (plain http on localhost), on everywhere else, so it cannot be forgotten.
+    cookie_secure: bool | None = None
+
+    # Password hashing (Argon2id) costs memory: at most this many hashes run at once,
+    # so the peak stays at ~19 MiB each, whatever the traffic.
+    password_hash_concurrency: int = 2
+    # Rate limits for /auth (in memory, per API process)
+    login_attempts_per_ip: int = 10  # per minute
+    login_attempts_per_email: int = 5  # per minute
+    registrations_per_ip: int = 5  # per hour
+
+    def secure_cookies(self) -> bool:
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        return self.environment != "local"
 
 
 @lru_cache
