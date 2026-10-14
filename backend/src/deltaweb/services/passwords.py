@@ -2,14 +2,25 @@
 
 Only the hash is stored. Argon2 is slow and memory-hungry on purpose: checking one
 password takes milliseconds, guessing billions from a stolen database does not scale.
+
+Parameters: OWASP's "m=19 MiB, t=2, p=1" profile instead of argon2-cffi's default
+(64 MiB, t=3, p=4). It is still within OWASP's recommendation, uses ~3.4x less memory
+and is ~4x faster (~17 ms per hash on an Apple M3), which suits a 4 GB VPS. Each hash
+stores its own parameters, so old hashes keep verifying; ``needs_rehash`` tells when one
+should be upgraded. A semaphore caps how many hashes run at once, which bounds the
+memory peak no matter how many requests arrive.
 """
 
 import string
+import threading
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
-_hasher = PasswordHasher()
+from deltaweb.config import get_settings
+
+_hasher = PasswordHasher(time_cost=2, memory_cost=19 * 1024, parallelism=1)
+_slots = threading.BoundedSemaphore(get_settings().password_hash_concurrency)
 
 MIN_LENGTH = 8
 # Long enough for any passphrase; a cap stops someone sending megabytes to hash
@@ -67,17 +78,24 @@ def check_password_strength(password: str) -> None:
 
 
 def hash_password(password: str) -> str:
-    """Argon2id hash with a random salt, e.g. ``$argon2id$v=19$m=65536,t=3,p=4$...``."""
-    return _hasher.hash(password)
+    """Argon2id hash with a random salt, e.g. ``$argon2id$v=19$m=19456,t=2,p=1$...``."""
+    with _slots:
+        return _hasher.hash(password)
 
 
 def verify_password(password: str, password_hash: str | None) -> bool:
     """True if ``password`` matches. A missing hash (no password set) never matches."""
-    if password_hash is None:
-        # Still do the work, so "no such account" and "wrong password" take the same time
-        _hasher.hash(password)
-        return False
-    try:
-        return _hasher.verify(password_hash, password)
-    except (VerificationError, InvalidHashError):
-        return False
+    with _slots:
+        if password_hash is None:
+            # Still do the work, so "no such account" and "wrong password" take the same time
+            _hasher.hash(password)
+            return False
+        try:
+            return _hasher.verify(password_hash, password)
+        except (VerificationError, InvalidHashError):
+            return False
+
+
+def needs_rehash(password_hash: str) -> bool:
+    """True if the hash was made with other parameters (e.g. the old 64 MiB default)."""
+    return _hasher.check_needs_rehash(password_hash)
