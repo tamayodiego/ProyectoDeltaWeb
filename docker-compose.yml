@@ -16,5 +16,12 @@ services:                       # lista de contenedores que queremos
       timeout: 3s
       retries: 10
 
+  mailpit:                      # atrapa los correos de desarrollo (no salen a internet)
+    image: axllent/mailpit:v1.31.4
+    container_name: deltaweb-mail
+    ports:
+      - "1025:1025"             # SMTP: el backend envía aquí
+      - "8025:8025"             # bandeja web: http://localhost:8025
+
 volumes:
   pgdata:                       # volumen con nombre: los datos sobreviven al apagar
