@@ -21,6 +21,19 @@ class Credentials(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class TokenBody(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+
+
+class ForgotPassword(BaseModel):
+    email: Email
+
+
+class ResetPassword(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=128)  # strength checked in the endpoint
+
+
 class UserOut(BaseModel):
     id: int
     email: str

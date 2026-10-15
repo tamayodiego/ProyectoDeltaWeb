@@ -9,7 +9,9 @@ Each test runs inside a transaction that is rolled back at the end, so tests nev
 each other's data and the database is not recreated for every test.
 """
 
+import re
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -20,6 +22,7 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 from testcontainers.community.postgres import PostgresContainer
 
+from deltaweb.api import auth as auth_api
 from deltaweb.api.auth import LIMITERS
 from deltaweb.db import get_session
 from deltaweb.main import app
@@ -36,6 +39,30 @@ def reset_rate_limits() -> Iterator[None]:
     for limiter in LIMITERS:
         limiter.reset()
     yield
+
+
+@dataclass
+class SentEmail:
+    """An email caught by ``inbox``; ``token`` is read from its link."""
+
+    to: str
+    subject: str
+    html: str
+    text: str
+
+    @property
+    def token(self) -> str:
+        match = re.search(r"token=([\w-]+)", self.text)
+        assert match, self.text
+        return match.group(1)
+
+
+@pytest.fixture(autouse=True)
+def inbox(monkeypatch: pytest.MonkeyPatch) -> list[SentEmail]:
+    """Catch every email instead of sending it; tests can read them from the list."""
+    sent: list[SentEmail] = []
+    monkeypatch.setattr(auth_api, "send_email", lambda *args: sent.append(SentEmail(*args)))
+    return sent
 
 
 @pytest.fixture(scope="session")
