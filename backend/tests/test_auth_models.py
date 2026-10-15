@@ -1,4 +1,4 @@
-"""Auth tables: users with login fields and their sessions (needs Docker, see conftest.py)."""
+"""Auth tables: users, sessions and linked Google/GitHub accounts (needs Docker)."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -7,7 +7,7 @@ from sqlalchemy import delete, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from deltaweb.models import User, UserSession
+from deltaweb.models import OAuthAccount, User, UserSession
 
 
 @pytest.fixture
@@ -109,3 +109,49 @@ def test_deleting_a_user_deletes_their_sessions(session: Session, user: User) ->
 
     remaining = session.scalars(select(UserSession.user_id)).all()
     assert remaining == [other.id]
+
+
+# --- oauth_accounts ---
+
+
+def test_only_google_and_github_are_valid_providers(session: Session, user: User) -> None:
+    session.add(OAuthAccount(user_id=user.id, provider="facebook", provider_user_id="1"))
+
+    with pytest.raises(IntegrityError, match="ck_oauth_accounts_provider_valid"):
+        session.flush()
+    session.rollback()
+
+
+def test_a_provider_account_links_to_only_one_user(session: Session, user: User) -> None:
+    other = User(email="other@deltaweb.local")
+    session.add(other)
+    session.flush()
+    session.add(OAuthAccount(user_id=user.id, provider="google", provider_user_id="g-1"))
+    session.flush()
+    session.add(OAuthAccount(user_id=other.id, provider="google", provider_user_id="g-1"))
+
+    with pytest.raises(IntegrityError, match="uq_oauth_accounts_provider_provider_user_id"):
+        session.flush()
+    session.rollback()
+
+
+def test_the_same_id_at_another_provider_is_another_account(session: Session, user: User) -> None:
+    session.add_all(
+        [
+            OAuthAccount(user_id=user.id, provider="google", provider_user_id="42"),
+            OAuthAccount(user_id=user.id, provider="github", provider_user_id="42"),
+        ]
+    )
+    session.flush()
+
+    linked = session.scalars(select(OAuthAccount).where(OAuthAccount.user_id == user.id))
+    assert len(linked.all()) == 2
+
+
+def test_deleting_a_user_deletes_their_linked_accounts(session: Session, user: User) -> None:
+    session.add(OAuthAccount(user_id=user.id, provider="github", provider_user_id="7"))
+    session.flush()
+
+    session.execute(delete(User).where(User.id == user.id))
+
+    assert session.scalars(select(OAuthAccount)).all() == []

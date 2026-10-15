@@ -60,6 +60,16 @@ class Settings(BaseSettings):
     # Public address of the web app, used to build the links inside emails
     app_url: str = "http://localhost:5173"
 
+    # Log in with Google / GitHub (OAuth 2.0). Create the apps in Google Cloud Console and
+    # GitHub Developer Settings; a provider without client id and secret is disabled.
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    github_client_id: str | None = None
+    github_client_secret: str | None = None
+    # Public address of this API: providers redirect back to {api_url}/auth/oauth/...
+    api_url: str = "http://localhost:8000"
+    oauth_timeout_seconds: float = 10.0
+
     def secure_cookies(self) -> bool:
         if self.cookie_secure is not None:
             return self.cookie_secure

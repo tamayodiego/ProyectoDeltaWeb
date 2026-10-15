@@ -7,6 +7,39 @@ usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.5.0] - 2026-10-15
+
+Fase 2c: iniciar sesión con Google y GitHub.
+
+### Añadido
+
+- **Login con Google y GitHub** (OAuth 2.0, Authorization Code con PKCE):
+  `GET /auth/oauth/{provider}/start` redirige al proveedor y `/callback` comprueba el
+  `state`, pide el perfil e inicia sesión. Un proveedor sin credenciales queda
+  deshabilitado (404) ([#32](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/32)).
+- **Cuentas vinculadas:** tabla `oauth_accounts` (migración `0006`), única por proveedor e
+  id del proveedor; un usuario puede vincular ambos proveedores
+  ([#32](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/32)).
+- **Buscar, vincular o crear** al volver del proveedor: la cuenta ya vinculada; si no, el
+  usuario con ese email (solo si el proveedor lo verificó); si no, un usuario nuevo sin
+  contraseña ([#32](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/32)).
+- Errores como redirecciones a `/login?error=oauth|no_email|email_in_use`, para que el
+  frontend muestre un mensaje concreto
+  ([#32](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/32)).
+- `backend/.env.example` con las variables de Google y GitHub
+  ([#32](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/32)).
+
+### Seguridad
+
+- Al vincular una cuenta local cuyo email no estaba verificado se borran su contraseña y
+  sus sesiones, para evitar el "pre-account takeover"
+  ([#32](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/32)).
+
+### Corregido
+
+- `/auth/oauth/{provider}/callback` respondía 500 con un `state` no ASCII (p. ej. `ñ`);
+  ahora redirige con error ([#32](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/32)).
+
 ## [0.4.0] - 2026-10-15
 
 Fase 2b: cuentas de usuario, sesiones, correo y protección contra abusos.
@@ -148,7 +181,8 @@ Fase 0: estructura del proyecto, herramientas y primera versión del dominio.
 - La imagen del backend usa uv 0.12, la misma versión que en local
   ([#5](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/5)).
 
-[Sin publicar]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.4.0...HEAD
+[Sin publicar]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.1.0...v0.2.0

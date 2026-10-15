@@ -11,7 +11,14 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
-from deltaweb.api.deps import CurrentUser, SessionDep, SessionToken, check_rate, client_ip
+from deltaweb.api.deps import (
+    CurrentUser,
+    SessionDep,
+    SessionToken,
+    check_rate,
+    client_ip,
+    set_session_cookie,
+)
 from deltaweb.config import get_settings
 from deltaweb.models import User, UserSession
 from deltaweb.schemas.auth import (
@@ -87,19 +94,6 @@ def check_new_password(password: str) -> None:
 INVALID_TOKEN = HTTPException(
     status.HTTP_400_BAD_REQUEST, detail="The link is invalid, expired or already used"
 )
-
-
-def set_session_cookie(response: Response, token: str) -> None:
-    settings = get_settings()
-    response.set_cookie(
-        SESSION_COOKIE,
-        token,
-        max_age=settings.session_days * 24 * 60 * 60,
-        httponly=True,  # JavaScript cannot read it, so an XSS bug cannot steal it
-        secure=settings.secure_cookies(),  # HTTPS only, except environment "local"
-        samesite="lax",
-        path="/",
-    )
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)

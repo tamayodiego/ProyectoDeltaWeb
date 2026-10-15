@@ -426,12 +426,13 @@ wheels = [
 
 [[package]]
 name = "deltaweb-backend"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "argon2-cffi" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "httpx" },
     { name = "numpy" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
@@ -453,6 +454,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.14" },
     { name = "argon2-cffi", specifier = ">=23.1" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "numpy", specifier = ">=2.5.3" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic-settings", specifier = ">=2.6" },
