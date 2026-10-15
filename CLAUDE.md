@@ -48,7 +48,7 @@ el despliegue a producción.
 `api/` (routers), `schemas/` (Pydantic: solo datos que viajan en JSON), `services/`
 (une API, dominio y BD), `domain/` (lógica pura de delta-matroides, sin FastAPI ni BD),
 `db.py` (engine, sesión, `Base`) y `models/` (tablas: `User`, `UserSession`,
-`EmailToken`, `Folder`, `DeltaMatroidRecord`; cada modelo nuevo se importa en
+`EmailToken`, `OAuthAccount`, `Folder`, `DeltaMatroidRecord`; cada modelo nuevo se importa en
 `models/__init__.py`). Las migraciones están en `backend/migrations/versions/` con IDs
 `0001`, `0002`, ...
 
@@ -108,6 +108,16 @@ el despliegue a producción.
   atómico. Los enlaces apuntan al frontend (`app_url`): `/verify-email` y `/reset-password`.
 - Rate limiting: `check_rate` y `client_ip` viven en `api/deps.py`; cada router define
   sus limitadores y una tupla `LIMITERS`, que el fixture `reset_rate_limits` reinicia.
+- Login con Google/GitHub (bloque 2c): `services/oauth.py` habla con los proveedores
+  (Authorization Code + PKCE) y `api/oauth.py` tiene `/auth/oauth/{provider}/start` y
+  `/callback`. Un proveedor sin `*_client_id`/`*_client_secret` queda deshabilitado (404).
+  La *redirect URI* registrada debe ser exactamente `{api_url}/auth/oauth/{provider}/callback`.
+  Vincular por email solo si el proveedor lo verificó; al vincular una cuenta local sin
+  verificar se borra su contraseña ("pre-account takeover"). Los errores redirigen a
+  `{app_url}/login?error=oauth|no_email|email_in_use`.
+- `Settings()` también lee `backend/.env`, incluso en los tests: si un test necesita un
+  valor concreto, pásalo explícito (p. ej. `google_client_id=None`). Pendiente: que los
+  tests no lean el `.env`.
 - Pendientes de auth: borrar sesiones y tokens caducados; decidir si el 409 del registro
   (que revela si un email tiene cuenta) se mantiene.
 - Fuera de pytest, `uv run python` puede fallar con `No module named 'deltaweb'` porque
