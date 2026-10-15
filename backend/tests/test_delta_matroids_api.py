@@ -272,3 +272,29 @@ def test_force_deletes_the_delta_matroids_too(client: TestClient) -> None:
 
     assert response.status_code == 204
     assert [s["name"] for s in client.get("/delta-matroids").json()] == ["Keep"]
+
+
+# --- Rate limits (generation is CPU work in the worker pool) ---
+
+
+def test_generate_is_limited_per_ip(client: TestClient) -> None:
+    body = {"matrix": GF2_MATRIX, "field": 2}
+    codes = [client.post("/delta-matroids/generate", json=body).status_code for _ in range(20)]
+    assert codes == [200] * 20
+
+    response = client.post("/delta-matroids/generate", json=body)
+
+    assert response.status_code == 429
+    assert int(response.headers["retry-after"]) >= 1
+
+
+def test_saving_is_limited_per_user(client: TestClient) -> None:
+    for i in range(30):
+        save(client, f"DM {i}")
+
+    body = {"name": "One too many", "matrix": GF2_MATRIX, "field": 2}
+    response = client.post("/delta-matroids", json=body)
+
+    assert response.status_code == 429
+    assert int(response.headers["retry-after"]) >= 1
+    assert len(client.get("/delta-matroids").json()) == 30  # the 31st was not saved

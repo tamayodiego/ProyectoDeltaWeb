@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     password_resets_per_ip: int = 5  # per hour
     password_resets_per_email: int = 3  # per hour
     verification_emails_per_user: int = 3  # per hour
+    # Generation is CPU work in the worker pool: keep one client from hogging it
+    generations_per_ip: int = 20  # per minute (/delta-matroids/generate, no login needed)
+    saves_per_user: int = 30  # per minute (POST /delta-matroids)
 
     # One-time links sent by email
     verify_token_hours: int = 24

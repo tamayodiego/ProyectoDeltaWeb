@@ -11,7 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
-from deltaweb.api.deps import CurrentUser, SessionDep, SessionToken
+from deltaweb.api.deps import CurrentUser, SessionDep, SessionToken, check_rate, client_ip
 from deltaweb.config import get_settings
 from deltaweb.models import User, UserSession
 from deltaweb.schemas.auth import (
@@ -31,7 +31,7 @@ from deltaweb.services.passwords import (
     needs_rehash,
     verify_password,
 )
-from deltaweb.services.rate_limit import RateLimited, RateLimiter
+from deltaweb.services.rate_limit import RateLimiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -54,23 +54,6 @@ LIMITERS = (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def check_rate(limiter: RateLimiter, key: str) -> None:
-    try:
-        limiter.hit(key)
-    except RateLimited as exc:
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many attempts, try again later",
-            headers={"Retry-After": str(exc.retry_after)},
-        ) from exc
-
-
-def client_ip(request: Request) -> str:
-    # Behind a proxy this is the proxy's address unless uvicorn trusts its
-    # X-Forwarded-For header (--forwarded-allow-ips); see CLAUDE.md
-    return request.client.host if request.client else "unknown"
 
 
 def to_out(user: User) -> UserOut:

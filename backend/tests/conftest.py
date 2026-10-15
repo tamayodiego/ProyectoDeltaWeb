@@ -23,7 +23,8 @@ from sqlalchemy.orm import Session
 from testcontainers.community.postgres import PostgresContainer
 
 from deltaweb.api import auth as auth_api
-from deltaweb.api.auth import LIMITERS
+from deltaweb.api import delta_matroids as delta_matroids_api
+from deltaweb.api.auth import LIMITERS as AUTH_LIMITERS
 from deltaweb.db import get_session
 from deltaweb.main import app
 from deltaweb.models import User
@@ -35,8 +36,8 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 @pytest.fixture(autouse=True)
 def reset_rate_limits() -> Iterator[None]:
-    """Every test starts with clean /auth counters (they live in memory, in the process)."""
-    for limiter in LIMITERS:
+    """Every test starts with clean rate-limit counters (they live in memory, in the process)."""
+    for limiter in (*AUTH_LIMITERS, *delta_matroids_api.LIMITERS):
         limiter.reset()
     yield
 
