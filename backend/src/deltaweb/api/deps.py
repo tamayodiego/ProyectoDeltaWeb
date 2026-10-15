@@ -2,9 +2,10 @@
 
 from typing import Annotated
 
-from fastapi import Cookie, Depends, HTTPException, Request, status
+from fastapi import Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+from deltaweb.config import get_settings
 from deltaweb.db import get_session
 from deltaweb.models import User
 from deltaweb.services.auth import SESSION_COOKIE, user_for_token
@@ -23,6 +24,20 @@ def get_current_user(session: SessionDep, token: SessionToken = None) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def set_session_cookie(response: Response, token: str) -> None:
+    """Log the browser in: the session token goes in an httpOnly cookie."""
+    settings = get_settings()
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        max_age=settings.session_days * 24 * 60 * 60,
+        httponly=True,  # JavaScript cannot read it, so an XSS bug cannot steal it
+        secure=settings.secure_cookies(),  # HTTPS only, except environment "local"
+        samesite="lax",
+        path="/",
+    )
 
 
 # --- Rate limiting (limiters live next to the routes that use them) ---
