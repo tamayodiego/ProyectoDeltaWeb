@@ -34,6 +34,7 @@ el despliegue a producción.
 | Todo lo disponible | `make` |
 | Dependencias | `make install` |
 | Postgres local | `make db` / `make db-down` / `make db-shell` |
+| Correos de desarrollo | `make mail` (Mailpit: SMTP en 1025, bandeja en http://localhost:8025) |
 | Migraciones | `make migrate` / `make migration m="..."` (revisar antes de aplicar) |
 | API en desarrollo | `make backend` (http://127.0.0.1:8000/docs) |
 | Frontend en desarrollo | `make frontend` |
@@ -46,9 +47,10 @@ el despliegue a producción.
 `backend/src/deltaweb/`: `main.py` (`create_app`), `config.py` (variables `DELTAWEB_*`),
 `api/` (routers), `schemas/` (Pydantic: solo datos que viajan en JSON), `services/`
 (une API, dominio y BD), `domain/` (lógica pura de delta-matroides, sin FastAPI ni BD),
-`db.py` (engine, sesión, `Base`) y `models/` (tablas: `User`, `Folder`,
-`DeltaMatroidRecord`; cada modelo nuevo se importa en `models/__init__.py`). Las
-migraciones están en `backend/migrations/versions/` con IDs `0001`, `0002`, ...
+`db.py` (engine, sesión, `Base`) y `models/` (tablas: `User`, `UserSession`,
+`EmailToken`, `Folder`, `DeltaMatroidRecord`; cada modelo nuevo se importa en
+`models/__init__.py`). Las migraciones están en `backend/migrations/versions/` con IDs
+`0001`, `0002`, ...
 
 ## Decisiones de diseño del dominio
 
@@ -79,8 +81,8 @@ migraciones están en `backend/migrations/versions/` con IDs `0001`, `0002`, ...
 - **Misma versión de herramientas en todos lados:** la versión de uv del
   `backend/Dockerfile` debe coincidir con la local (hoy 0.12), porque `uv.lock` la escribe
   el uv local. Lo mismo para pnpm en `frontend/Dockerfile`.
-- El `docker-compose.yml` solo tiene `db`; backend y frontend se corren en la Mac durante
-  el desarrollo y se agregan a Compose en la Fase 4.
+- El `docker-compose.yml` tiene `db` y `mailpit`; backend y frontend se corren en la Mac
+  durante el desarrollo y se agregan a Compose en la Fase 4.
 - Infraestructura limitada: VPS de 2 vCPU y 4 GB de RAM. Pensar en el consumo de memoria.
 - Generación 2^n en subconjuntos; se usa con n <= 15 (~0.3 s en un Apple M3, ver
   `backend/scripts/benchmark.py`). En la API corre en un pool de 2 procesos (`spawn`);
@@ -97,7 +99,16 @@ migraciones están en `backend/migrations/versions/` con IDs `0001`, `0002`, ...
   confía en `X-Forwarded-For` (`--forwarded-allow-ips`); si no, todos comparten la IP del
   proxy y el límite por IP pasa a ser global (pendiente para el despliegue).
 - `cookie_secure` es automático: la cookie solo va sin `Secure` con `environment=local`.
-- Pendientes de auth: borrar sesiones caducadas; decidir si el 409 del registro (que
-  revela si un email tiene cuenta) se mantiene.
+- Correo (`services/email.py`): SMTP según `smtp_*` en `config.py` (Mailpit en local;
+  Resend o Brevo en producción). Los endpoints lo envían después de responder
+  (`BackgroundTasks`), así `/auth/password/forgot` responde igual exista o no la cuenta.
+  En los tests, el fixture autouse `inbox` (conftest) atrapa todos los correos.
+- Tokens de un solo uso por correo (`email_tokens`, `services/email_tokens.py`): verificar
+  (24 h) y recuperar contraseña (1 h). Se canjean con un `UPDATE ... WHERE used_at IS NULL`
+  atómico. Los enlaces apuntan al frontend (`app_url`): `/verify-email` y `/reset-password`.
+- Rate limiting: `check_rate` y `client_ip` viven en `api/deps.py`; cada router define
+  sus limitadores y una tupla `LIMITERS`, que el fixture `reset_rate_limits` reinicia.
+- Pendientes de auth: borrar sesiones y tokens caducados; decidir si el 409 del registro
+  (que revela si un email tiene cuenta) se mantiene.
 - Fuera de pytest, `uv run python` puede fallar con `No module named 'deltaweb'` porque
   macOS oculta el `.pth` de `.venv`; usar `PYTHONPATH=src`.
