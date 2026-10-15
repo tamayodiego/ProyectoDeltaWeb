@@ -2,12 +2,13 @@
 
 from typing import Annotated
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from deltaweb.db import get_session
 from deltaweb.models import User
 from deltaweb.services.auth import SESSION_COOKIE, user_for_token
+from deltaweb.services.rate_limit import RateLimited, RateLimiter
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SessionToken = Annotated[str | None, Cookie(alias=SESSION_COOKIE)]
@@ -22,3 +23,24 @@ def get_current_user(session: SessionDep, token: SessionToken = None) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+# --- Rate limiting (limiters live next to the routes that use them) ---
+
+
+def check_rate(limiter: RateLimiter, key: str) -> None:
+    """Count one attempt for ``key``; over the limit -> 429 with a Retry-After header."""
+    try:
+        limiter.hit(key)
+    except RateLimited as exc:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many attempts, try again later",
+            headers={"Retry-After": str(exc.retry_after)},
+        ) from exc
+
+
+def client_ip(request: Request) -> str:
+    # Behind a proxy this is the proxy's address unless uvicorn trusts its
+    # X-Forwarded-For header (--forwarded-allow-ips); see CLAUDE.md
+    return request.client.host if request.client else "unknown"
