@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from deltaweb import __version__
-from deltaweb.api import delta_matroids, folders, health
+from deltaweb.api import auth, delta_matroids, folders, health
 from deltaweb.config import get_settings
 from deltaweb.services.generation import create_executor
 
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
         title=settings.app_name, version=__version__, debug=settings.debug, lifespan=lifespan
     )
     app.include_router(health.router)
+    app.include_router(auth.router)
     app.include_router(folders.router)
     app.include_router(delta_matroids.router)
     return app

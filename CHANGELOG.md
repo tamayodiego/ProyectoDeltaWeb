@@ -7,6 +7,46 @@ usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.4.0] - 2026-10-15
+
+Fase 2b: cuentas de usuario, sesiones, correo y protección contra abusos.
+
+### Añadido
+
+- **Mailpit** en `docker-compose.yml` para atrapar los correos de desarrollo; `make mail`
+  lo levanta y abre la bandeja ([#24](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/24)).
+- **Modelos de autenticación:** `User` con `password_hash`, `email_verified_at` y email en
+  minúsculas; tabla `user_sessions` (migración `0004`)
+  ([#25](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/25)).
+- **Registro, login y logout** (`/auth/register`, `/auth/login`, `/auth/logout`,
+  `/auth/me`): contraseñas con Argon2id y reglas de fuerza; sesión con un token de 256
+  bits en una cookie `httpOnly` y `SameSite=Lax`, guardando solo su hash; mismo 401 para
+  email desconocido y contraseña incorrecta
+  ([#26](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/26)).
+- **Rate limiting en `/auth`:** login 10/min por IP y 5/min por email; registro 5/hora
+  por IP; responde 429 con `Retry-After`
+  ([#27](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/27)).
+- **Correo:** servicio SMTP con plantillas HTML y de texto ("Verifica tu correo",
+  "Recupera tu contraseña"), configurable para Mailpit, Resend o Brevo
+  ([#28](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/28)).
+- **Verificar correo y recuperar contraseña** con tokens de un solo uso (tabla
+  `email_tokens`, migración `0005`): `/auth/verify/request`, `/auth/verify`,
+  `/auth/password/forgot` (siempre 202) y `/auth/password/reset` (cierra todas las
+  sesiones). El registro envía el correo de verificación
+  ([#28](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/28)).
+- **Rate limiting en la generación:** `/delta-matroids/generate` 20/min por IP y guardar
+  30/min por usuario ([#29](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/29)).
+
+### Cambiado
+
+- **Todas las rutas de carpetas y delta-matroides requieren sesión**: el usuario demo
+  temporal desapareció ([#26](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/26)).
+- Argon2id usa el perfil de OWASP (19 MiB, t=2, p=1) en lugar del predeterminado de
+  64 MiB, con como mucho 2 hashes a la vez; los hashes antiguos se actualizan al iniciar
+  sesión ([#27](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/27)).
+- La cookie de sesión lleva `Secure` en todos los entornos salvo `local`
+  ([#27](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/27)).
+
 ## [0.3.0] - 2026-10-05
 
 Fase 2a: base de datos, carpetas y delta-matroides guardadas.
@@ -108,7 +148,8 @@ Fase 0: estructura del proyecto, herramientas y primera versión del dominio.
 - La imagen del backend usa uv 0.12, la misma versión que en local
   ([#5](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/5)).
 
-[Sin publicar]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.3.0...HEAD
+[Sin publicar]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/releases/tag/v0.1.0

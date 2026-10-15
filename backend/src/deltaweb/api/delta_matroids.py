@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from deltaweb.api.deps import CurrentUser, SessionDep
+from deltaweb.api.deps import CurrentUser, SessionDep, check_rate, client_ip
 from deltaweb.api.folders import get_own_folder
 from deltaweb.config import get_settings
 from deltaweb.domain.deltamatroid import DeltaMatroid, InvalidMatrixError
@@ -23,8 +23,16 @@ from deltaweb.schemas.delta_matroid import (
     GenerateRequest,
 )
 from deltaweb.services.generation import GenerationResult, generate
+from deltaweb.services.rate_limit import RateLimiter
 
 router = APIRouter(prefix="/delta-matroids", tags=["delta-matroids"])
+
+_settings = get_settings()
+# Both run a generation in the worker pool. /generate needs no login, so it is limited
+# per IP; saving needs a login, so per user.
+generate_by_ip = RateLimiter(_settings.generations_per_ip, window=60)
+save_by_user = RateLimiter(_settings.saves_per_user, window=60)
+LIMITERS = (generate_by_ip, save_by_user)
 
 
 def get_executor(request: Request) -> Executor:
@@ -92,11 +100,14 @@ def to_out(record: DeltaMatroidRecord) -> DeltaMatroidOut:
 
 
 @router.post("/generate")
-def generate_delta_matroid(body: GenerateRequest, executor: ExecutorDep) -> GeneratedDeltaMatroid:
+def generate_delta_matroid(
+    body: GenerateRequest, request: Request, executor: ExecutorDep
+) -> GeneratedDeltaMatroid:
     """Delta-matroid of the non-singular principal submatrices over GF(field).
 
     Nothing is saved: this only computes. The work runs in a worker process.
     """
+    check_rate(generate_by_ip, client_ip(request))
     result = run_generation(executor, body)
     return GeneratedDeltaMatroid(
         field=body.field,
@@ -112,6 +123,7 @@ def create_delta_matroid(
     body: DeltaMatroidCreate, session: SessionDep, user: CurrentUser, executor: ExecutorDep
 ) -> DeltaMatroidOut:
     """Generate from the matrix (in the worker pool) and save the result."""
+    check_rate(save_by_user, str(user.id))
     if body.folder_id is not None:
         get_own_folder(session, user, body.folder_id)
     result = run_generation(executor, body)

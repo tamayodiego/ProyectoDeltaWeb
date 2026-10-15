@@ -1,7 +1,7 @@
 # Atajos del proyecto. `make` o `make help` muestra la lista.
 
 .DEFAULT_GOAL := help
-.PHONY: help install hooks db db-down db-logs db-shell migrate migration backend frontend test lint format build
+.PHONY: help install hooks db db-down db-logs db-shell migrate migration backend frontend test lint format build mail
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -51,3 +51,7 @@ format: ## Formatea el código del backend
 build: ## Construye las imágenes Docker de backend y frontend
 	docker build -t deltaweb-backend ./backend
 	docker build -t deltaweb-frontend ./frontend
+
+mail: ## Levanta Mailpit y abre la bandeja de correos de desarrollo
+	docker compose up -d --wait mailpit
+	open http://localhost:8025
