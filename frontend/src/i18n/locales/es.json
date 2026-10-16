@@ -1,0 +1,39 @@
+{
+  "app": {
+    "name": "ProyectoDelta",
+    "footer": "ProyectoDelta / Álgebra discreta"
+  },
+  "nav": {
+    "main": "Principal",
+    "workspace": "Área de trabajo",
+    "new": "Nueva delta-matroide",
+    "isomorphism": "Isomorfismo"
+  },
+  "header": {
+    "switchLanguage": "Cambiar idioma a inglés",
+    "toDark": "Cambiar a modo oscuro",
+    "toLight": "Cambiar a modo claro",
+    "login": "Entrar"
+  },
+  "workspace": {
+    "title": "Mis delta-matroides",
+    "newFolder": "Nueva carpeta",
+    "treeSoon": "El árbol de carpetas llega en el bloque 3d.",
+    "select": "Elige una delta-matroide del árbol o crea una nueva.",
+    "apiOk": "API conectada · v{{version}}",
+    "apiDown": "Sin conexión con la API"
+  },
+  "pages": {
+    "placeholder": "Esta pantalla llega en el bloque {{block}}.",
+    "deltaMatroid": "Delta-matroide {{id}}",
+    "notFound": "Página no encontrada",
+    "backToWorkspace": "Volver al área de trabajo"
+  },
+  "auth": {
+    "login": "Entrar",
+    "register": "Crear cuenta",
+    "forgot": "Recuperar contraseña",
+    "reset": "Nueva contraseña",
+    "verify": "Verificar correo"
+  }
+}

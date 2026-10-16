@@ -7,6 +7,37 @@ usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.6.0] - 2026-10-16
+
+Base del frontend: estructura de la app, navegación, temas, idiomas y cliente tipado de la API.
+
+### Añadido
+
+- **Estructura de la app** con React Router: área de trabajo (`/workspace`), páginas de
+  autenticación (`/login`, `/register`, `/forgot-password`, `/reset-password`,
+  `/verify-email`) y página 404. Las páginas de contenido son provisionales
+  ([#35](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/35)).
+- **Cliente tipado de la API** con `openapi-fetch`: los tipos (`src/api/schema.d.ts`) se
+  generan del OpenAPI de FastAPI con `make api-types`. `/api` va al backend por el proxy
+  de Vite en desarrollo y por nginx en producción, así la cookie de sesión funciona sin
+  CORS ([#35](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/35)).
+- **Estado de la API** en la cabecera (`/readyz` con TanStack Query)
+  ([#35](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/35)).
+- **Temas** claro, oscuro o el del sistema, recordados en el navegador y aplicados antes
+  de que cargue React (sin parpadeo)
+  ([#35](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/35)).
+- **Idiomas** español e inglés con i18next y detección del idioma del navegador
+  ([#35](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/35)).
+- **Estilos** con Tailwind y componentes de shadcn
+  ([#35](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/35)).
+- **Herramientas del frontend:** Vitest con Testing Library, Prettier y `tsc` en
+  `make lint` y `make test` ([#35](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/35)).
+
+### Eliminado
+
+- La página y los recursos de la plantilla de Vite
+  ([#35](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/35)).
+
 ## [0.5.0] - 2026-10-15
 
 Fase 2c: iniciar sesión con Google y GitHub.
@@ -181,7 +212,8 @@ Fase 0: estructura del proyecto, herramientas y primera versión del dominio.
 - La imagen del backend usa uv 0.12, la misma versión que en local
   ([#5](https://github.com/tamayodiego/ProyectoDeltaWeb/pull/5)).
 
-[Sin publicar]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.5.0...HEAD
+[Sin publicar]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/tamayodiego/ProyectoDeltaWeb/compare/v0.2.0...v0.3.0

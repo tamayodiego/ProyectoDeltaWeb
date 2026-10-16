@@ -1,0 +1,39 @@
+{
+  "app": {
+    "name": "ProyectoDelta",
+    "footer": "ProyectoDelta / Discrete algebra"
+  },
+  "nav": {
+    "main": "Main",
+    "workspace": "Workspace",
+    "new": "New delta-matroid",
+    "isomorphism": "Isomorphism"
+  },
+  "header": {
+    "switchLanguage": "Switch language to Spanish",
+    "toDark": "Switch to dark mode",
+    "toLight": "Switch to light mode",
+    "login": "Log in"
+  },
+  "workspace": {
+    "title": "My delta-matroids",
+    "newFolder": "New folder",
+    "treeSoon": "The folder tree arrives in block 3d.",
+    "select": "Pick a delta-matroid from the tree or create a new one.",
+    "apiOk": "API connected · v{{version}}",
+    "apiDown": "No connection to the API"
+  },
+  "pages": {
+    "placeholder": "This screen arrives in block {{block}}.",
+    "deltaMatroid": "Delta-matroid {{id}}",
+    "notFound": "Page not found",
+    "backToWorkspace": "Back to the workspace"
+  },
+  "auth": {
+    "login": "Log in",
+    "register": "Create account",
+    "forgot": "Recover password",
+    "reset": "New password",
+    "verify": "Verify email"
+  }
+}

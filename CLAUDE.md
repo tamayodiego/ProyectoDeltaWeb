@@ -37,10 +37,20 @@ el despliegue a producción.
 | Correos de desarrollo | `make mail` (Mailpit: SMTP en 1025, bandeja en http://localhost:8025) |
 | Migraciones | `make migrate` / `make migration m="..."` (revisar antes de aplicar) |
 | API en desarrollo | `make backend` (http://127.0.0.1:8000/docs) |
-| Frontend en desarrollo | `make frontend` |
-| Pruebas | `make test` (o `cd backend && uv run pytest`; las de BD necesitan Docker) |
-| Estilo y tipos | `make lint` / `make format` |
+| Frontend en desarrollo | `make frontend` (http://localhost:5173; `/api` va al backend por el proxy de Vite) |
+| Tipos de la API | `make api-types` (con `make backend` corriendo): regenera `frontend/src/api/schema.d.ts` |
+| Pruebas | `make test` (backend con pytest, las de BD necesitan Docker; frontend con Vitest) |
+| Estilo y tipos | `make lint` (Ruff, mypy, ESLint, Prettier, tsc) / `make format` |
 | Imágenes Docker | `make build` |
+
+## Estructura del frontend
+
+`frontend/src/`: `app/` (`App.tsx`, `router.tsx` con React Router), `pages/`, `components/`
+(`layout/` de la app y `ui/` de shadcn), `api/` (`client.ts` con `openapi-fetch` tipado
+por `schema.d.ts`, que es generado: nunca editarlo a mano), `i18n/` (i18next, `es` y `en`),
+`theme/` (claro, oscuro o el del sistema) y `lib/`. Estilos con Tailwind; datos del servidor con TanStack
+Query. Las rutas del frontend `/verify-email` y `/reset-password` reciben los enlaces de
+los correos, y `/login?error=...` los errores de OAuth.
 
 ## Estructura del backend
 
