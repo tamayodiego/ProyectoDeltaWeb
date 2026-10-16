@@ -1,111 +1,163 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/dm-sans';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+/* dark: utilities apply inside <html class="dark"> (see the theme toggle) */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Two themes, same structure; only the palette changes.
+ *   :root  = 01 Laboratorio claro  · "Precisión y claridad"
+ *   .dark  = 02 Pizarra oscura     · "Contraste y concentración"
+ * shadcn names first (its components use them), then our own tokens.
+ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  color-scheme: light;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --background: #f5f8f6; /* page */
+  --foreground: #1c2d27; /* main text */
+  --card: #ffffff; /* panels */
+  --card-foreground: #1c2d27;
+  --popover: #ffffff;
+  --popover-foreground: #1c2d27;
+  --primary: #00675a; /* accent: teal green, only on what is active */
+  --primary-foreground: #fcfcfc;
+  --secondary: #ecf2ef; /* tenue */
+  --secondary-foreground: #1c2d27;
+  --muted: #ecf2ef;
+  --muted-foreground: #65726c; /* secondary text */
+  --accent: #d6eee6; /* soft accent: active tree item, selection */
+  --accent-foreground: #00675a;
+  --destructive: #b3261e;
+  --border: #d7e1dc;
+  --input: #d7e1dc;
+  --ring: #00675a;
+  --radius: 6px; /* panels; md = 4.8px buttons, sm = 3.6px cells and chips */
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1c2d27;
+  --sidebar-primary: #00675a;
+  --sidebar-primary-foreground: #fcfcfc;
+  --sidebar-accent: #d6eee6;
+  --sidebar-accent-foreground: #00675a;
+  --sidebar-border: #d7e1dc;
+  --sidebar-ring: #00675a;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  /* Our own */
+  --tenue: #ecf2ef; /* bands, chips */
+  --cell-0: #eef2f0; /* matrix cell with 0 */
+  --cell-1: #ccebe1; /* matrix cell with 1 (number in --primary) */
+  --track: #e6eeeb; /* frequency bar track */
+  --signal: #00675a; /* notable values (non-zero fingerprint) */
+  --shadow-panel: 0 2px 6px rgb(28 45 39 / 2.5%);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #111415;
+  --foreground: #dfe6e6;
+  --card: #191e1e;
+  --card-foreground: #dfe6e6;
+  --popover: #191e1e;
+  --popover-foreground: #dfe6e6;
+  --primary: #51cec7; /* cyan: the only active voice */
+  --primary-foreground: #071413;
+  --secondary: #232a2a;
+  --secondary-foreground: #dfe6e6;
+  --muted: #232a2a;
+  --muted-foreground: #889999;
+  --accent: #0d3737;
+  --accent-foreground: #51cec7;
+  --destructive: #f2a097;
+  --border: #2f3737;
+  --input: #2f3737;
+  --ring: #51cec7;
+
+  --sidebar: #191e1e;
+  --sidebar-foreground: #dfe6e6;
+  --sidebar-primary: #51cec7;
+  --sidebar-primary-foreground: #071413;
+  --sidebar-accent: #0d3737;
+  --sidebar-accent-foreground: #51cec7;
+  --sidebar-border: #2f3737;
+  --sidebar-ring: #51cec7;
+
+  --tenue: #232a2a;
+  --cell-0: #232929;
+  --cell-1: #11403e;
+  --track: #273030;
+  --signal: #eac25a; /* gold: only on data that deserves it */
+  --shadow-panel: 0 2px 6px rgb(223 230 230 / 2.5%);
+}
+
+/* Tailwind classes from the variables: bg-primary, text-muted-foreground, bg-cell-1... */
+@theme inline {
+  --font-sans: 'DM Sans Variable', system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-tenue: var(--tenue);
+  --color-cell-0: var(--cell-0);
+  --color-cell-1: var(--cell-1);
+  --color-track: var(--track);
+  --color-signal: var(--signal);
+  --shadow-panel: var(--shadow-panel);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-sm text-foreground;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
