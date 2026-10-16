@@ -5,11 +5,15 @@
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
     "types": ["vite/client"],
+
+    /* "@/x" = "src/x" (same alias in vite.config.ts) */
+    "paths": { "@/*": ["./src/*"] },
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

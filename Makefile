@@ -1,7 +1,7 @@
 # Atajos del proyecto. `make` o `make help` muestra la lista.
 
 .DEFAULT_GOAL := help
-.PHONY: help install hooks db db-down db-logs db-shell migrate migration backend frontend test lint format build mail
+.PHONY: help install hooks db db-down db-logs db-shell migrate migration backend frontend api-types test lint format build mail
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -38,15 +38,20 @@ backend: ## Corre la API en modo desarrollo (http://127.0.0.1:8000/docs)
 frontend: ## Corre el frontend en modo desarrollo
 	cd frontend && pnpm dev
 
-test: ## Corre las pruebas del backend (las de BD necesitan Docker encendido)
+api-types: ## Regenera los tipos de la API para el frontend (con make backend corriendo)
+	cd frontend && pnpm api:types
+
+test: ## Corre las pruebas del backend (las de BD necesitan Docker) y del frontend
 	cd backend && uv run pytest
+	cd frontend && pnpm test
 
-lint: ## Revisa estilo y tipos (Ruff, mypy, ESLint)
+lint: ## Revisa estilo y tipos (Ruff, mypy, ESLint, Prettier, tsc)
 	cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
-	cd frontend && pnpm lint
+	cd frontend && pnpm lint && pnpm format:check && pnpm typecheck
 
-format: ## Formatea el código del backend
+format: ## Formatea el código del backend y del frontend
 	cd backend && uv run ruff format . && uv run ruff check --fix .
+	cd frontend && pnpm format
 
 build: ## Construye las imágenes Docker de backend y frontend
 	docker build -t deltaweb-backend ./backend
